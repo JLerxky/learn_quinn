@@ -147,12 +147,11 @@ pub async fn server_handle_request(
             .map_err(|e| anyhow!("failed to shutdown stream: {}", e))?;
     }
 
-    println!("complete");
     Ok(())
 }
 
 pub async fn server_handle_bytes(bytes: bytes::Bytes) -> Result<()> {
-    println!("context: {}", String::from_utf8_lossy(&bytes));
+    println!("resp: {}", String::from_utf8_lossy(&bytes));
 
     println!("complete");
     Ok(())
