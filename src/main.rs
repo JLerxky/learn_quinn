@@ -63,21 +63,21 @@ async fn handle_request((mut send, recv): (quinn::SendStream, quinn::RecvStream)
         .read_to_end(64 * 1024)
         .await
         .map_err(|e| anyhow!("failed reading request: {}", e))?;
+
     let mut escaped = String::new();
     for &x in &req[..] {
         let part = ascii::escape_default(x).collect::<Vec<_>>();
         escaped.push_str(std::str::from_utf8(&part).unwrap());
     }
-    // Execute the request
     println!("context: {}", &escaped);
-    // Write the response
+
     send.write_all(&req)
         .await
         .map_err(|e| anyhow!("failed to send response: {}", e))?;
-    // Gracefully terminate the stream
     send.finish()
         .await
         .map_err(|e| anyhow!("failed to shutdown stream: {}", e))?;
+
     println!("complete");
     Ok(())
 }
