@@ -1,7 +1,11 @@
+use futures_util::StreamExt;
+use learn_quinn::send_bi;
+
 fn main() {
     let quinn_runtime = tokio::runtime::Runtime::new().unwrap();
     quinn_runtime.block_on(client("./cert/cert.pem"));
 }
+
 async fn client(cert_path: &str) {
     let cert = std::fs::read(&cert_path).unwrap();
     let mut roots = rustls::RootCertStore::empty();
@@ -23,21 +27,46 @@ async fn client(cert_path: &str) {
         println!("connected success");
 
         let quinn::NewConnection {
-            connection: conn, ..
+            connection: conn,
+            bi_streams,
+            ..
         } = new_conn;
 
-        let mut i = 0;
+        // 主动发送端
+        tokio::spawn(async move {
+            let mut i = 0;
+            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs_f64(1f64));
+            loop {
+                interval.tick().await;
+                if let Ok(resp) = send_bi(conn.clone(), i.to_string().as_bytes()).await {
+                    println!("resp: {}", String::from_utf8_lossy(resp.as_slice()));
+                }
+                i += 1;
+            }
+        });
 
-        while let Ok((mut send, recv)) = conn.open_bi().await {
-            let _ = send.write_all(i.to_string().as_bytes()).await;
-            let _ = send.finish().await;
+        // 接收端
+        client_handle_bi(bi_streams).await;
 
-            let resp = recv.read_to_end(usize::max_value()).await.unwrap();
-            println!("resp: {}", String::from_utf8_lossy(resp.as_slice()));
-            i += 1;
-        }
-
-        conn.close(0u32.into(), b"done");
         endpoint.wait_idle().await;
+    }
+}
+
+async fn client_handle_bi(mut bi_streams: quinn::IncomingBiStreams) {
+    while let Some(stream) = bi_streams.next().await {
+        let stream = match stream {
+            Err(quinn::ConnectionError::ApplicationClosed { .. }) => {
+                println!("connection closed");
+                return;
+            }
+            Err(e) => {
+                println!("connection error: {}", e);
+                return;
+            }
+            Ok(s) => s,
+        };
+        let (mut _send, recv) = stream;
+        let resp = recv.read_to_end(usize::max_value()).await.unwrap();
+        println!("resp: {}", String::from_utf8_lossy(resp.as_slice()));
     }
 }

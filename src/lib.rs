@@ -38,3 +38,22 @@ pub fn generate_self_signed_cert(
     let key = rustls::PrivateKey(serialized_key);
     Ok((cert, key))
 }
+
+pub async fn send_bi(conn: quinn::Connection, buf: &[u8]) -> Result<Vec<u8>> {
+    let (mut send, recv) = conn.open_bi().await?;
+    let _ = send.write_all(buf).await;
+    let _ = send.finish().await;
+
+    Ok(recv.read_to_end(1024).await?)
+}
+
+pub async fn send_uni(conn: quinn::Connection, buf: &[u8]) -> Result<()> {
+    let mut send = conn.open_uni().await?;
+    let _ = send.write_all(buf).await;
+    let _ = send.finish().await;
+    Ok(())
+}
+
+// pub async fn send_(conn: &quinn::Connection, data: bytes::bytes::Bytes) -> Result<()> {
+//     Ok(conn.clone().send_datagram(data)?)
+// }
