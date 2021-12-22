@@ -29,7 +29,7 @@ async fn client(cert_path: &str) {
         let mut i = 0;
 
         while let Ok((mut send, recv)) = conn.open_bi().await {
-            let _ = send.write_all(&i.to_string().as_bytes()).await;
+            let _ = send.write_all(i.to_string().as_bytes()).await;
             let _ = send.finish().await;
 
             let resp = recv.read_to_end(usize::max_value()).await.unwrap();
