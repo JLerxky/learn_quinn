@@ -18,7 +18,7 @@ impl NetServer {
             {
                 if let Ok((endpoint, mut incoming)) = quinn::Endpoint::server(
                     server_config,
-                    "0.0.0.0:2101".parse::<std::net::SocketAddr>().unwrap(),
+                    "127.0.0.1:2101".parse::<std::net::SocketAddr>().unwrap(),
                 ) {
                     println!("listening on {}", endpoint.local_addr().unwrap());
                     while let Some(conn) = incoming.next().await {

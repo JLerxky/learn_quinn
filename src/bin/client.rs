@@ -1,6 +1,6 @@
 use anyhow::Result;
 use futures_util::{StreamExt, TryFutureExt};
-use learn_quinn::send_bi;
+use learn_quinn::send_uni;
 
 fn main() {
     let quinn_runtime = tokio::runtime::Runtime::new().unwrap();
@@ -19,7 +19,7 @@ async fn client(cert_path: &str) {
 
         let new_conn = endpoint
             .connect(
-                "198.18.0.106:2101".parse::<std::net::SocketAddr>().unwrap(),
+                "127.0.0.1:2101".parse::<std::net::SocketAddr>().unwrap(),
                 "localhost",
             )
             .unwrap()
@@ -41,8 +41,8 @@ async fn client(cert_path: &str) {
             // let mut interval = tokio::time::interval(tokio::time::Duration::from_secs_f64(1f64));
             loop {
                 // interval.tick().await;
-                if let Ok(resp) = send_bi(conn.clone(), i.to_string().as_bytes()).await {
-                    println!("resp: {}", String::from_utf8_lossy(resp.as_slice()));
+                if let Err(_) = send_uni(conn.clone(), i.to_string().as_bytes()).await {
+                    break;
                 }
                 i += 1;
             }
