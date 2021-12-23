@@ -19,7 +19,7 @@ async fn client(cert_path: &str) {
 
         let new_conn = endpoint
             .connect(
-                "127.0.0.1:5001".parse::<std::net::SocketAddr>().unwrap(),
+                "198.18.0.106:2101".parse::<std::net::SocketAddr>().unwrap(),
                 "localhost",
             )
             .unwrap()
@@ -38,9 +38,9 @@ async fn client(cert_path: &str) {
         // 主动发送端
         tokio::spawn(async move {
             let mut i = 0;
-            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs_f64(1f64));
+            // let mut interval = tokio::time::interval(tokio::time::Duration::from_secs_f64(1f64));
             loop {
-                interval.tick().await;
+                // interval.tick().await;
                 if let Ok(resp) = send_bi(conn.clone(), i.to_string().as_bytes()).await {
                     println!("resp: {}", String::from_utf8_lossy(resp.as_slice()));
                 }
