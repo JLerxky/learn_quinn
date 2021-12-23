@@ -5,22 +5,28 @@ use std::ascii;
 
 fn main() {
     let quinn_runtime = tokio::runtime::Runtime::new().unwrap();
-    quinn_runtime.block_on(server("./cert/cert.pem", "./cert/privkey.pem"));
+    quinn_runtime.block_on(NetServer::start("./cert/cert.pem", "./cert/privkey.pem"));
 }
 
-async fn server(cert_path: &str, key_path: &str) {
-    if let Ok((cert_chain, key)) = generate_self_signed_cert(cert_path, key_path) {
-        if let Ok(server_config) = quinn::ServerConfig::with_single_cert(vec![cert_chain], key) {
-            if let Ok((endpoint, mut incoming)) = quinn::Endpoint::server(
-                server_config,
-                "127.0.0.1:5001".parse::<std::net::SocketAddr>().unwrap(),
-            ) {
-                println!("listening on {}", endpoint.local_addr().unwrap());
-                while let Some(conn) = incoming.next().await {
-                    println!("connection incoming");
-                    tokio::spawn(server_handle_connection(conn).unwrap_or_else(move |e| {
-                        println!("connection failed: {reason}", reason = e.to_string())
-                    }));
+#[derive(Clone)]
+pub struct NetServer {}
+
+impl NetServer {
+    pub async fn start(cert_path: &str, key_path: &str) {
+        if let Ok((cert_chain, key)) = generate_self_signed_cert(cert_path, key_path) {
+            if let Ok(server_config) = quinn::ServerConfig::with_single_cert(vec![cert_chain], key)
+            {
+                if let Ok((endpoint, mut incoming)) = quinn::Endpoint::server(
+                    server_config,
+                    "127.0.0.1:5001".parse::<std::net::SocketAddr>().unwrap(),
+                ) {
+                    println!("listening on {}", endpoint.local_addr().unwrap());
+                    while let Some(conn) = incoming.next().await {
+                        println!("connection incoming");
+                        tokio::spawn(server_handle_connection(conn).unwrap_or_else(move |e| {
+                            println!("connection failed: {reason}", reason = e.to_string())
+                        }));
+                    }
                 }
             }
         }
@@ -62,7 +68,7 @@ async fn server_handle_connection(conn: quinn::Connecting) -> Result<()> {
     Ok(())
 }
 
-pub async fn server_handle_bi(mut bi_streams: quinn::IncomingBiStreams) {
+async fn server_handle_bi(mut bi_streams: quinn::IncomingBiStreams) {
     while let Some(stream) = bi_streams.next().await {
         let stream = match stream {
             Err(quinn::ConnectionError::ApplicationClosed { .. }) => {
@@ -82,7 +88,7 @@ pub async fn server_handle_bi(mut bi_streams: quinn::IncomingBiStreams) {
     }
 }
 
-pub async fn server_handle_uni(mut uni_streams: quinn::IncomingUniStreams) {
+async fn server_handle_uni(mut uni_streams: quinn::IncomingUniStreams) {
     while let Some(stream) = uni_streams.next().await {
         let stream = match stream {
             Err(quinn::ConnectionError::ApplicationClosed { .. }) => {
@@ -102,7 +108,7 @@ pub async fn server_handle_uni(mut uni_streams: quinn::IncomingUniStreams) {
     }
 }
 
-pub async fn server_handle_datagrams(mut datagrams: quinn::Datagrams) {
+async fn server_handle_datagrams(mut datagrams: quinn::Datagrams) {
     while let Some(stream) = datagrams.next().await {
         let stream = match stream {
             Err(quinn::ConnectionError::ApplicationClosed { .. }) => {
@@ -122,7 +128,7 @@ pub async fn server_handle_datagrams(mut datagrams: quinn::Datagrams) {
     }
 }
 
-pub async fn server_handle_request(
+async fn server_handle_request(
     send: Option<quinn::SendStream>,
     recv: quinn::RecvStream,
 ) -> Result<()> {
@@ -150,7 +156,7 @@ pub async fn server_handle_request(
     Ok(())
 }
 
-pub async fn server_handle_bytes(bytes: bytes::Bytes) -> Result<()> {
+async fn server_handle_bytes(bytes: bytes::Bytes) -> Result<()> {
     println!("resp: {}", String::from_utf8_lossy(&bytes));
 
     println!("complete");
