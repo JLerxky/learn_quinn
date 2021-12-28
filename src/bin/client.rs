@@ -50,16 +50,16 @@ async fn client(cert_path: &str) {
 
         // 接收端
         tokio::select! {
-            _ = client_handle_datagrams(datagrams) => {},
-            _ = client_handle_uni(uni_streams) => {},
-            _ = client_handle_bi(bi_streams) => {},
+            _ = client_read_datagrams(datagrams) => {},
+            _ = client_read_uni(uni_streams) => {},
+            _ = client_read_bi(bi_streams) => {},
         }
 
         endpoint.wait_idle().await;
     }
 }
 
-async fn client_handle_bi(mut bi_streams: quinn::IncomingBiStreams) {
+async fn client_read_bi(mut bi_streams: quinn::IncomingBiStreams) {
     while let Some(stream) = bi_streams.next().await {
         let stream = match stream {
             Err(quinn::ConnectionError::ApplicationClosed { .. }) => {
@@ -74,13 +74,13 @@ async fn client_handle_bi(mut bi_streams: quinn::IncomingBiStreams) {
         };
         let (mut _send, recv) = stream;
         tokio::spawn(
-            client_handle_request(None, recv)
+            client_handle_stream(None, recv)
                 .unwrap_or_else(move |e| println!("failed: {reason}", reason = e.to_string())),
         );
     }
 }
 
-pub async fn client_handle_uni(mut uni_streams: quinn::IncomingUniStreams) {
+pub async fn client_read_uni(mut uni_streams: quinn::IncomingUniStreams) {
     while let Some(stream) = uni_streams.next().await {
         let stream = match stream {
             Err(quinn::ConnectionError::ApplicationClosed { .. }) => {
@@ -94,15 +94,15 @@ pub async fn client_handle_uni(mut uni_streams: quinn::IncomingUniStreams) {
             Ok(s) => s,
         };
         tokio::spawn(
-            client_handle_request(None, stream)
+            client_handle_stream(None, stream)
                 .unwrap_or_else(move |e| println!("failed: {reason}", reason = e.to_string())),
         );
     }
 }
 
-pub async fn client_handle_datagrams(mut datagrams: quinn::Datagrams) {
-    while let Some(stream) = datagrams.next().await {
-        let stream = match stream {
+pub async fn client_read_datagrams(mut datagrams: quinn::Datagrams) {
+    while let Some(datagram) = datagrams.next().await {
+        let datagram = match datagram {
             Err(quinn::ConnectionError::ApplicationClosed { .. }) => {
                 println!("connection closed");
                 return;
@@ -114,13 +114,13 @@ pub async fn client_handle_datagrams(mut datagrams: quinn::Datagrams) {
             Ok(s) => s,
         };
         tokio::spawn(
-            client_handle_bytes(stream)
+            client_handle_datagram(datagram)
                 .unwrap_or_else(move |e| println!("failed: {reason}", reason = e.to_string())),
         );
     }
 }
 
-pub async fn client_handle_request(
+pub async fn client_handle_stream(
     _send: Option<quinn::SendStream>,
     recv: quinn::RecvStream,
 ) -> Result<()> {
@@ -129,8 +129,8 @@ pub async fn client_handle_request(
     Ok(())
 }
 
-pub async fn client_handle_bytes(bytes: bytes::Bytes) -> Result<()> {
-    println!("resp: {}", String::from_utf8_lossy(&bytes));
+pub async fn client_handle_datagram(datagram: bytes::Bytes) -> Result<()> {
+    println!("resp: {}", String::from_utf8_lossy(&datagram));
 
     Ok(())
 }
