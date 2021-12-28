@@ -5,13 +5,12 @@ use std::ascii;
 
 fn main() {
     let quinn_runtime = tokio::runtime::Runtime::new().unwrap();
-    quinn_runtime.block_on(NetServer::start("./cert/cert.pem", "./cert/privkey.pem"));
+    quinn_runtime.block_on(Server::start("./cert/cert.pem", "./cert/privkey.pem"));
 }
 
-#[derive(Clone)]
-pub struct NetServer {}
+pub struct Server {}
 
-impl NetServer {
+impl Server {
     pub async fn start(cert_path: &str, key_path: &str) {
         if let Ok((cert_chain, key)) = generate_self_signed_cert(cert_path, key_path) {
             if let Ok(server_config) = quinn::ServerConfig::with_single_cert(vec![cert_chain], key)
@@ -61,14 +60,14 @@ async fn server_handle_connection(conn: quinn::Connecting) -> Result<()> {
 
     // Each stream initiated by the client constitutes a new request.
     tokio::select! {
-        _ = server_handle_datagrams(datagrams) => {},
-        _ = server_handle_uni(uni_streams) => {},
-        _ = server_handle_bi(bi_streams) => {},
+        _ = server_read_datagrams(datagrams) => {},
+        _ = server_read_uni(uni_streams) => {},
+        _ = server_read_bi(bi_streams) => {},
     }
     Ok(())
 }
 
-async fn server_handle_bi(mut bi_streams: quinn::IncomingBiStreams) {
+async fn server_read_bi(mut bi_streams: quinn::IncomingBiStreams) {
     while let Some(stream) = bi_streams.next().await {
         let stream = match stream {
             Err(quinn::ConnectionError::ApplicationClosed { .. }) => {
@@ -82,13 +81,13 @@ async fn server_handle_bi(mut bi_streams: quinn::IncomingBiStreams) {
             Ok(s) => s,
         };
         tokio::spawn(
-            server_handle_request(Some(stream.0), stream.1)
+            server_handle_stream(Some(stream.0), stream.1)
                 .unwrap_or_else(move |e| println!("failed: {reason}", reason = e.to_string())),
         );
     }
 }
 
-async fn server_handle_uni(mut uni_streams: quinn::IncomingUniStreams) {
+async fn server_read_uni(mut uni_streams: quinn::IncomingUniStreams) {
     while let Some(stream) = uni_streams.next().await {
         let stream = match stream {
             Err(quinn::ConnectionError::ApplicationClosed { .. }) => {
@@ -102,15 +101,15 @@ async fn server_handle_uni(mut uni_streams: quinn::IncomingUniStreams) {
             Ok(s) => s,
         };
         tokio::spawn(
-            server_handle_request(None, stream)
+            server_handle_stream(None, stream)
                 .unwrap_or_else(move |e| println!("failed: {reason}", reason = e.to_string())),
         );
     }
 }
 
-async fn server_handle_datagrams(mut datagrams: quinn::Datagrams) {
-    while let Some(stream) = datagrams.next().await {
-        let stream = match stream {
+async fn server_read_datagrams(mut datagrams: quinn::Datagrams) {
+    while let Some(datagram) = datagrams.next().await {
+        let datagram = match datagram {
             Err(quinn::ConnectionError::ApplicationClosed { .. }) => {
                 println!("connection closed");
                 return;
@@ -122,13 +121,13 @@ async fn server_handle_datagrams(mut datagrams: quinn::Datagrams) {
             Ok(s) => s,
         };
         tokio::spawn(
-            server_handle_bytes(stream)
+            server_handle_datagram(datagram)
                 .unwrap_or_else(move |e| println!("failed: {reason}", reason = e.to_string())),
         );
     }
 }
 
-async fn server_handle_request(
+async fn server_handle_stream(
     send: Option<quinn::SendStream>,
     recv: quinn::RecvStream,
 ) -> Result<()> {
@@ -156,8 +155,8 @@ async fn server_handle_request(
     Ok(())
 }
 
-async fn server_handle_bytes(bytes: bytes::Bytes) -> Result<()> {
-    println!("resp: {}", String::from_utf8_lossy(&bytes));
+async fn server_handle_datagram(datagram: bytes::Bytes) -> Result<()> {
+    println!("resp: {}", String::from_utf8_lossy(&datagram));
 
     println!("complete");
     Ok(())
