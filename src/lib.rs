@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use bytes::Bytes;
 
 pub fn read_cert_from_file(
     cert_path: &str,
@@ -54,6 +55,6 @@ pub async fn send_uni(conn: quinn::Connection, buf: &[u8]) -> Result<()> {
     Ok(())
 }
 
-// pub async fn send_(conn: &quinn::Connection, data: bytes::bytes::Bytes) -> Result<()> {
-//     Ok(conn.clone().send_datagram(data)?)
-// }
+pub async fn send_dg(conn: quinn::Connection, data: Bytes) -> Result<()> {
+    Ok(conn.clone().send_datagram(data)?)
+}

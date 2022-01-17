@@ -1,6 +1,6 @@
 use anyhow::Result;
 use futures_util::{StreamExt, TryFutureExt};
-use learn_quinn::send_uni;
+use learn_quinn::send_dg;
 
 fn main() {
     let quinn_runtime = tokio::runtime::Runtime::new().unwrap();
@@ -35,19 +35,18 @@ async fn client(cert_path: &str) {
             ..
         } = new_conn;
 
-        // 主动发送端
+        // 发送心跳
         tokio::spawn(async move {
-            let mut i = 0;
-            // let mut interval = tokio::time::interval(tokio::time::Duration::from_secs_f64(1f64));
+            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs_f64(1f64));
             loop {
-                // interval.tick().await;
-                if let Err(_) = send_uni(conn.clone(), i.to_string().as_bytes()).await {
+                interval.tick().await;
+                if let Err(_) =
+                    send_dg(conn.clone(), bytes::Bytes::from_static("0".as_bytes())).await
+                {
                     break;
                 }
-                i += 1;
             }
         });
-
         // 接收端
         tokio::select! {
             _ = client_read_datagrams(datagrams) => {},
