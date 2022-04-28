@@ -22,9 +22,10 @@ impl Server {
                     println!("listening on {}", endpoint.local_addr().unwrap());
                     while let Some(conn) = incoming.next().await {
                         println!("connection incoming");
-                        tokio::spawn(server_handle_connection(conn).unwrap_or_else(move |e| {
-                            println!("connection failed: {reason}", reason = e.to_string())
-                        }));
+                        tokio::spawn(
+                            server_handle_connection(conn)
+                                .unwrap_or_else(move |e| println!("connection failed: {e}")),
+                        );
                     }
                 }
             }
@@ -82,7 +83,7 @@ async fn server_read_bi(mut bi_streams: quinn::IncomingBiStreams) {
         };
         tokio::spawn(
             server_handle_stream(Some(stream.0), stream.1)
-                .unwrap_or_else(move |e| println!("failed: {reason}", reason = e.to_string())),
+                .unwrap_or_else(move |e| println!("failed: {e}")),
         );
     }
 }
@@ -101,8 +102,7 @@ async fn server_read_uni(mut uni_streams: quinn::IncomingUniStreams) {
             Ok(s) => s,
         };
         tokio::spawn(
-            server_handle_stream(None, stream)
-                .unwrap_or_else(move |e| println!("failed: {reason}", reason = e.to_string())),
+            server_handle_stream(None, stream).unwrap_or_else(move |e| println!("failed: {e}")),
         );
     }
 }
@@ -121,8 +121,7 @@ async fn server_read_datagrams(mut datagrams: quinn::Datagrams) {
             Ok(s) => s,
         };
         tokio::spawn(
-            server_handle_datagram(datagram)
-                .unwrap_or_else(move |e| println!("failed: {reason}", reason = e.to_string())),
+            server_handle_datagram(datagram).unwrap_or_else(move |e| println!("failed: {e}")),
         );
     }
 }
@@ -134,7 +133,7 @@ async fn server_handle_stream(
     let req = recv
         .read_to_end(64 * 1024)
         .await
-        .map_err(|e| anyhow!("failed reading request: {}", e))?;
+        .map_err(|e| anyhow!("failed reading request: {e}"))?;
 
     let mut escaped = String::new();
     for &x in &req[..] {
@@ -146,10 +145,10 @@ async fn server_handle_stream(
     if let Some(mut send) = send {
         send.write_all(&req)
             .await
-            .map_err(|e| anyhow!("failed to send response: {}", e))?;
+            .map_err(|e| anyhow!("failed to send response: {e}"))?;
         send.finish()
             .await
-            .map_err(|e| anyhow!("failed to shutdown stream: {}", e))?;
+            .map_err(|e| anyhow!("failed to shutdown stream: {e}"))?;
     }
 
     Ok(())

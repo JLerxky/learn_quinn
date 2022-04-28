@@ -56,5 +56,5 @@ pub async fn send_uni(conn: quinn::Connection, buf: &[u8]) -> Result<()> {
 }
 
 pub async fn send_dg(conn: quinn::Connection, data: Bytes) -> Result<()> {
-    Ok(conn.clone().send_datagram(data)?)
+    Ok(conn.send_datagram(data)?)
 }
