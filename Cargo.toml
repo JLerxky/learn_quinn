@@ -3,13 +3,20 @@ name = "learn_quinn"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-rustls = { version = "0.20", features = ["quic"] }
-tokio = { version = "1.15", features = ["rt", "time", "rt-multi-thread", "macros"] }
-futures-util = { version = "0.3", default-features = false, features = ["io"] }
-quinn = "0.8"
-bytes = "1.1"
-rcgen = "0.9"
 anyhow = "1.0"
+chrono = "0.4"
+quinn = "0.10"
+rcgen = "0.11"
+rustls = { version = "0.21", features = ["quic"] }
+tokio = { version = "1.32", features = ["rt", "time", "rt-multi-thread", "macros"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[[bin]]
+name = "client"
+path = "src/bin/client.rs"
+
+[[bin]]
+name = "server"
+path = "src/bin/server.rs"
